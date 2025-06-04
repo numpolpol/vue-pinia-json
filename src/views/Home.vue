@@ -2,6 +2,15 @@
   <div class="container mx-auto p-4">
     <h1 class="text-2xl font-bold mb-4">Multi-language JSON Editor</h1>
     <div v-if="step === 1">
+      <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded text-blue-900">
+        <b>วิธีใช้งาน:</b><br />
+        1. คลิก <b>Choose Files</b> เพื่อเลือกไฟล์ JSON หลายภาษา (เช่น th.json, en.json)<br />
+        2. ตรวจสอบว่าไฟล์ที่เลือกเป็น JSON format ที่ถูกต้อง<br />
+        3. คลิก <b>Ready</b> เพื่อเข้าสู่หน้าตารางแก้ไข<br />
+        <span class="text-red-600"
+          >* หากไฟล์ JSON format ผิด จะมีข้อความแจ้งเตือนและไม่นำเข้าไฟล์นั้น</span
+        >
+      </div>
       <input type="file" multiple accept=".json" @change="onFilesSelected" />
       <div class="mt-4">
         <button class="btn btn-primary" :disabled="files.length === 0" @click="step = 2">
@@ -21,6 +30,18 @@
         <button class="btn btn-outline" @click="expandAll">Expand All</button>
         <button class="btn btn-outline" @click="collapseAll">Collapse All</button>
         <button class="btn btn-info" @click="pasteToFields">Paste</button>
+        <button class="btn btn-outline" @click="showInfo = true" title="Info">ℹ️</button>
+      </div>
+      <div
+        v-if="showInfo"
+        class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded text-blue-900 relative"
+      >
+        <button class="absolute top-2 right-2 text-lg" @click="showInfo = false">✕</button>
+        <b>คำแนะนำการใช้งาน Paste:</b><br />
+        <b>Paste ข้อมูลจาก Google Sheet หรือ Excel:</b> สามารถคัดลอกข้อมูลจากตาราง (เลือก cell
+        หลายภาษา → กด Ctrl+C หรือ Cmd+C) แล้วคลิกปุ่ม
+        <b>Paste</b> ในแต่ละฟิลด์ของตารางเพื่อวางค่าหลายภาษาได้ทันที (รองรับ tab, space, หรือ
+        newline)
       </div>
       <div class="overflow-x-auto">
         <json-table
@@ -50,12 +71,14 @@ const search = ref('')
 
 const expandSignal = ref(0)
 const collapseSignal = ref(0)
+const showInfo = ref(false)
 
 function onFilesSelected(e: Event) {
   const input = e.target as HTMLInputElement
   if (!input.files) return
   files.value = Array.from(input.files)
   jsons.value = []
+  let errorFiles: string[] = []
   const readers = files.value.map(
     (file) =>
       new Promise<void>((resolve) => {
@@ -65,13 +88,31 @@ function onFilesSelected(e: Event) {
             jsons.value.push(JSON.parse(reader.result as string))
           } catch {
             jsons.value.push({})
+            errorFiles.push(file.name)
           }
           resolve()
         }
         reader.readAsText(file)
       }),
   )
-  Promise.all(readers).then(() => {})
+  Promise.all(readers).then(() => {
+    if (errorFiles.length > 0) {
+      window.alert(
+        `ไฟล์ต่อไปนี้ไม่ใช่ JSON format ที่ถูกต้อง และจะไม่ถูกนำเข้า:\n` + errorFiles.join('\n'),
+      )
+      // ลบไฟล์ที่ผิดออกจาก files และ jsons
+      const validFiles: File[] = []
+      const validJsons: any[] = []
+      files.value.forEach((file, idx) => {
+        if (!errorFiles.includes(file.name)) {
+          validFiles.push(file)
+          validJsons.push(jsons.value[idx])
+        }
+      })
+      files.value = validFiles
+      jsons.value = validJsons
+    }
+  })
 }
 
 function exportAll() {

@@ -59,10 +59,24 @@
           <td :colspan="files.length + 1" class="p-0 array-bg">
             <div class="border rounded p-2 bg-blue-50">
               <div
-                v-for="arrIdx in getMaxArrayLength(key)"
+                v-for="arrIdx of Array(getMaxArrayLength(key)).keys()"
                 :key="arrIdx"
                 class="mb-2 flex items-start gap-2 array-row"
               >
+                <button
+                  v-if="jsons.some((j) => isObject(j[key]?.[arrIdx]))"
+                  class="btn btn-xs btn-ghost mr-1"
+                  @click="
+                    collapsed[getArrayItemCollapseKey(key, arrIdx)] =
+                      !collapsed[getArrayItemCollapseKey(key, arrIdx)]
+                  "
+                  :aria-label="
+                    collapsed[getArrayItemCollapseKey(key, arrIdx)] ? 'Expand' : 'Collapse'
+                  "
+                >
+                  <span v-if="collapsed[getArrayItemCollapseKey(key, arrIdx)]">▶</span>
+                  <span v-else>▼</span>
+                </button>
                 <span class="text-xs text-gray-500 minw40">[{{ arrIdx }}]</span>
                 <template v-for="(file, idx) in files" :key="file.name">
                   <template v-if="isPrimitive(jsons[idx][key]?.[arrIdx])">
@@ -73,11 +87,11 @@
                     />
                   </template>
                   <template v-else-if="isObject(jsons[idx][key]?.[arrIdx])">
-                    <json-table
-                      :jsons="jsons.map((j) => j[key][arrIdx] || (j[key][arrIdx] = {}))"
-                      :files="files"
-                      :level="level + 2"
-                    />
+                    <span
+                      v-if="collapsed[getArrayItemCollapseKey(key, arrIdx)]"
+                      class="text-gray-400 italic"
+                      >[object]</span
+                    >
                   </template>
                   <template v-else-if="isArray(jsons[idx][key]?.[arrIdx])">
                     <span class="text-gray-400 italic">[nested array]</span>
@@ -86,6 +100,20 @@
                     <span class="text-gray-400 italic">[empty]</span>
                   </template>
                 </template>
+                <!-- Nested object table for this array item -->
+                <div
+                  v-if="
+                    jsons.some((j) => isObject(j[key]?.[arrIdx])) &&
+                    !collapsed[getArrayItemCollapseKey(key, arrIdx)]
+                  "
+                  style="width: 100%"
+                >
+                  <json-table
+                    :jsons="jsons.map((j) => j[key][arrIdx] || (j[key][arrIdx] = {}))"
+                    :files="files"
+                    :level="level + 2"
+                  />
+                </div>
               </div>
             </div>
           </td>
@@ -102,40 +130,42 @@ const props = defineProps<{
   jsons: Record<string, any>[]
   files: File[]
   level?: number
-  search?: string
   expandSignal?: number
   collapseSignal?: number
 }>()
 
 const level = props.level ?? 0
 
-function filterKeys(keys: string[], parentPath = ''): string[] {
-  if (!props.search) return keys
-  const searchLower = props.search.toLowerCase()
-  return keys.filter((key) => {
-    const fullPath = parentPath ? `${parentPath}.${key}` : key
-    if (fullPath.toLowerCase().includes(searchLower)) return true
-    // Check nested object/array for match
-    for (const obj of props.jsons) {
-      const val = obj[key]
-      if (isObject(val)) {
-        const nestedKeys = Object.keys(val)
-        if (filterKeys(nestedKeys, fullPath).length > 0) return true
-      } else if (isArray(val)) {
-        for (let i = 0; i < val.length; i++) {
-          const arrVal = val[i]
-          if (isObject(arrVal)) {
-            const nestedKeys = Object.keys(arrVal)
-            if (filterKeys(nestedKeys, `${fullPath}[${i}]`).length > 0) return true
-          }
-        }
-      }
+function deepEqual(a: any, b: any): boolean {
+  if (a === b) return true
+  if (typeof a !== typeof b) return false
+  if (typeof a !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false
+    for (let i = 0; i < a.length; i++) {
+      if (!deepEqual(a[i], b[i])) return false
     }
-    return false
-  })
+    return true
+  }
+  if (!Array.isArray(a) && !Array.isArray(b)) {
+    const aKeys = Object.keys(a)
+    const bKeys = Object.keys(b)
+    if (aKeys.length !== bKeys.length) return false
+    for (const k of aKeys) {
+      if (!deepEqual(a[k], b[k])) return false
+    }
+    return true
+  }
+  return false
+}
+
+function isAllValuesDeepEqual(key: string) {
+  const first = props.jsons[0]?.[key]
+  return props.jsons.every((j) => deepEqual(j?.[key], first))
 }
 
 const allKeys = computed(() => {
+  // Collect all keys at this level from all jsons, but only include each key once
   const keySet = new Set<string>()
   props.jsons.forEach((obj) => {
     if (obj && typeof obj === 'object') {
@@ -143,11 +173,17 @@ const allKeys = computed(() => {
     }
   })
   let keys = Array.from(keySet)
-  keys = filterKeys(keys)
+  // Ensure only unique keys at this level
+  keys = [...new Set(keys)]
   return keys
 })
 
 const collapsed = ref<Record<string, boolean>>({})
+
+function getArrayItemCollapseKey(key: string, arrIdx: number) {
+  // Unique key for each array item collapse state
+  return `${key}__${arrIdx}`
+}
 
 watch(
   () => props.expandSignal,
