@@ -78,6 +78,18 @@
                   <span v-else>▼</span>
                 </button>
                 <span class="text-xs text-gray-500 minw40">[{{ arrIdx }}]</span>
+                <!-- Paste button for array of string/number/boolean -->
+                <button
+                  v-if="
+                    jsons.every(
+                      (j) => isPrimitive(j[key]?.[arrIdx]) || j[key]?.[arrIdx] === undefined,
+                    )
+                  "
+                  class="btn btn-xs btn-outline mr-1"
+                  @click="pasteToArrayField(key, arrIdx)"
+                >
+                  Paste
+                </button>
                 <template v-for="(file, idx) in files" :key="file.name">
                   <template v-if="isPrimitive(jsons[idx][key]?.[arrIdx])">
                     <input
@@ -234,6 +246,28 @@ async function pasteToField(key: string) {
   for (let f = 0; f < props.files.length; f++) {
     if (props.jsons[f] && typeof props.jsons[f][key] !== 'object') {
       props.jsons[f][key] = values[f] ?? ''
+    }
+  }
+}
+async function pasteToArrayField(key: string, arrIdx: number) {
+  let text = ''
+  try {
+    text = await navigator.clipboard.readText()
+  } catch {
+    text = window.prompt('Paste your text here:') || ''
+  }
+  if (!text) return
+  let values = text.split(/\t|\s{2,}|\n/).filter(Boolean)
+  if (values.length < props.files.length) {
+    values = text.split(/\s+/).filter(Boolean)
+  }
+  for (let f = 0; f < props.files.length; f++) {
+    if (
+      props.jsons[f] &&
+      (isPrimitive(props.jsons[f][key]?.[arrIdx]) || props.jsons[f][key]?.[arrIdx] === undefined)
+    ) {
+      if (!Array.isArray(props.jsons[f][key])) props.jsons[f][key] = []
+      props.jsons[f][key][arrIdx] = values[f] ?? ''
     }
   }
 }
