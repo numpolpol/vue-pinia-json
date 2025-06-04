@@ -1,0 +1,36 @@
+{
+  "greeting": "Hello",
+  "farewell": "Goodbye",
+  "menu": {
+    "file": "File",
+    "edit": "Edit",
+    "view": "View",
+    "help": "Help"
+  },
+  "days": [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday"
+  ],
+  "user": {
+    "profile": {
+      "name": "John Doe",
+      "age": 30,
+      "active": true
+    },
+    "roles": [
+      { "code": "admin", "label": "Administrator" },
+      { "code": "user", "label": "User" }
+    ]
+  },
+  "features": [
+    "multi-language",
+    "json-editing",
+    "export",
+    "paste-support"
+  ]
+}
