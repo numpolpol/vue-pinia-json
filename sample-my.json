@@ -1,0 +1,36 @@
+{
+  "greeting": "Hai",
+  "farewell": "Selamat tinggal",
+  "menu": {
+    "file": "Fail",
+    "edit": "Sunting",
+    "view": "Lihat",
+    "help": "Bantuan"
+  },
+  "days": [
+    "Isnin",
+    "Selasa",
+    "Rabu",
+    "Khamis",
+    "Jumaat",
+    "Sabtu",
+    "Ahad"
+  ],
+  "user": {
+    "profile": {
+      "name": "Ahmad Bin Ali",
+      "age": 30,
+      "active": true
+    },
+    "roles": [
+      { "code": "admin", "label": "Pentadbir" },
+      { "code": "user", "label": "Pengguna" }
+    ]
+  },
+  "features": [
+    "berbilang bahasa",
+    "suntingan json",
+    "eksport",
+    "sokongan tampal"
+  ]
+}
